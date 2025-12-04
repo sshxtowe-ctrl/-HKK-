@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>#Hkk — คุณเป็นใครในโรงเรียนเฮียกคิ</title>
+<style>
+  :root{
+    --bg:#070707; --card:#111; --accent:#e53935; --muted:#cfcfcf;
+    --white:#fff; --red:#e53935; --black:#000;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: "Prompt", "Noto Sans Thai", "Noto Sans", sans-serif;
+    background:linear-gradient(180deg,#050505,var(--bg));
+    color:var(--white); display:flex; align-items:center; justify-content:center; min-height:100vh;
+    padding:20px;
+  }
+  .wrap{width:100%; max-width:960px;}
+  header{text-align:center;margin-bottom:14px}
+  h1{margin:0;font-size:24px;color:var(--red);text-shadow:0 0 10px #ff7f7f44}
+  .sub{color:var(--muted);margin-top:6px;font-size:14px}
+  .card{background:linear-gradient(180deg,#0f0f0f,#151515); border:1px solid rgba(255,255,255,0.03);
+        padding:18px;border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.6);}
+  .qnum{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .qtitle{font-weight:700;margin:8px 0 12px;font-size:18px}
+  .opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .opt{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);
+       padding:14px;border-radius:10px;cursor:pointer;transition:all .14s;font-weight:600}
+  .opt:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(229,57,53,0.12);background:rgba(229,57,53,0.06)}
+  .controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:flex-end}
+  .btn{background:var(--red);color:var(--white);border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .progress{height:8px;background:#0c0c0c;border-radius:8px;overflow:hidden;margin-top:12px}
+  .progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff8a80,#e53935);transition:width .45s ease}
+  #result{margin-top:18px;padding:16px;border-radius:12px;background:linear-gradient(180deg,#0e0e0e,#121212);
+          border:1px solid rgba(229,57,53,0.12);display:none}
+  .res-row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .res-card{flex:1;min-width:220px;padding:14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.02)}
+  .emoji{font-size:44px;margin-bottom:8px}
+  .rtitle{font-weight:800;font-size:16px;margin-bottom:6px;color:var(--red)}
+  .rdesc{color:var(--muted);line-height:1.5;font-size:14px}
+  .credit{margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+  @media(max-width:720px){.opts{grid-template-columns:1fr}.res-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔴⚫⚪ #Hkk — คุณเป็นใครในโรงเรียนเฮียกคิ</h1>
+    <div class="sub">ตอบคำถาม 15 ข้อ แล้วดูผลทั้ง “ประเภท” และ “แก๊ง” ของคุณ — ออกแบบโดย <b>lullmorien</b></div>
+  </header>
+
+  <div class="card" id="card">
+    <div class="qnum" id="qnum">คำถาม 1 / 15</div>
+    <div class="qtitle" id="qtitle">...</div>
+
+    <div class="opts" id="opts"></div>
+
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+
+    <div class="controls">
+      <button class="btn ghost" id="btnSkip">ข้าม</button>
+    </div>
+
+    <div id="result"></div>
+    <div class="credit">ออกแบบโดย <b>lullmorien</b></div>
+  </div>
+</div>
+
+<script>
+/* simple synth click */
+function playClick(){
+  try{
+    const ctx = window._hhAudioCtx || (window._hhAudioCtx = new (window.AudioContext||window.webkitAudioContext)());
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 900;
+    g.gain.value = 0.0001;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    setTimeout(()=>{ try{o.stop(); o.disconnect(); g.disconnect();}catch(e){} },160);
+  }catch(e){}
+}
+
+/* --- 15 questions --- */
+/* Each option maps to a 'type' and a 'gang' */
+const questions = [
+  { q:"1) เวลาอยู่ในโรงเรียน มึงมักอยู่ที่ไหนมากสุด?", o:[
+      {t:'human_cautious', g:'akito', txt:"ห้องสมุดเงียบ ๆ"},
+      {t:'human_curious', g:'manasa', txt:"สนามกีฬา / ที่คนเยอะ"},
+      {t:'yokai_private', g:'sayuri', txt:"ม้านั่งหลังโรงเรียน"},
+      {t:'yokai_playful', g:'yoichi', txt:"มุมที่เปลี่ยนได้ทุกวัน สนุกดี"}
+    ]},
+  { q:"2) ถ้าได้ยินเสียงประตูเปิดเองตอนกลางคืน มึงจะ…", o:[
+      {t:'human_cautious', g:'akito', txt:"เงียบๆ แล้วเดินเลี่ยง"},
+      {t:'human_curious', g:'manasa', txt:"เดินไปดูด้วยความสงสัย"},
+      {t:'yokai_playful', g:'yoichi', txt:"ขำแล้วถ่ายสตอรี่"},
+      {t:'yokai_scared', g:'akito', txt:"กลับห้องทันทีเลย"}
+    ]},
+  { q:"3) เพื่อนบอกให้ช่วยงานโรงเรียนมึงตอบว่า?", o:[
+      {t:'human_cautious', g:'manasa', txt:"ช่วย แต่ขอรายละเอียดก่อน"},
+      {t:'human_curious', g:'manasa', txt:"ไปแน่นอน! สนุกสิ"},
+      {t:'yokai_mischief', g:'yoichi', txt:"ไปแล้วแอบวางแผนแกล้งเพื่อน"},
+      {t:'yokai_calm', g:'sayuri', txt:"ไปแบบนิ่งๆ ทำงานให้เรียบร้อย"}
+    ]},
+  { q:"4) ถ้ามีคนร้องไห้ข้างห้อง คุณจะ…", o:[
+      {t:'human_cautious', g:'akito', txt:"ยืนค่อย ๆ ถามว่าต้องการอะไรไหม"},
+      {t:'human_curious', g:'manasa', txt:"อยากรู้สาเหตุ แล้วค่อยช่วย"},
+      {t:'yokai_mischief', g:'yoichi', txt:"แกล้งทำท่าตลกให้เขายิ้ม"},
+      {t:'yokai_calm', g:'sayuri', txt:"นั่งเงียบ ๆ ข้าง ๆ คนร้องไห้"}
+    ]},
+  { q:"5) เพื่อนชวนไปล่าข่าวลือโยไค คุณตอบว่า?", o:[
+      {t:'yokai_scared', g:'akito', txt:"ไม่ไป กลัวเจอเรื่องไม่ดี"},
+      {t:'human_curious', g:'manasa', txt:"ไปสิ! อยากรู้มาก"},
+      {t:'yokai_mischief', g:'yoichi', txt:"ไปเพื่อแกล้งเพื่อนเล่น"},
+      {t:'yokai_calm', g:'sayuri', txt:"ตามไปแบบนิ่งๆ เฝ้าดูอยู่ห่างๆ"}
+    ]},
+  { q:"6) เวลาโมโห มึงมักจะ…", o:[
+      {t:'human_cautious', g:'akito', txt:"เดินหนีไปตั้งสติ"},
+      {t:'yokai_playful', g:'yoichi', txt:"แซวกลับเบาๆ ให้สถานการณ์ผ่อนคลาย"},
+      {t:'human_hot', g:'manasa', txt:"ระเบิดใส่เพื่อน แต่ขอโทษหลังจากนั้น"},
+      {t:'yokai_calm', g:'sayuri', txt:"ยิ้มแล้วพูดอย่างสุภาพแต่จี้ใจ"}
+    ]},
+  { q:"7) เจอคนแปลกหน้าขอความช่วยเหลือ มึงทำยังไง?", o:[
+      {t:'human_cautious', g:'akito', txt:"ช่วย แต่ระวังตัวเสมอ"},
+      {t:'human_curious', g:'manasa', txt:"ช่วยและอยากรู้เรื่องให้ลึก"},
+      {t:'yokai_mischief', g:'yoichi', txt:"แกล้งถามเล่นก่อน แล้วช่วยจริงๆ"},
+      {t:'yokai_calm', g:'sayuri', txt:"ช่วยแบบเงียบๆ และเป็นระบบ"}
+    ]},
+  { q:"8) เวลาว่างมึงชอบทำอะไรที่สุด?", o:[
+      {t:'human_curious', g:'manasa', txt:"อ่านเรื่องลี้ลับ/ค้นข้อมูล"},
+      {t:'yokai_playful', g:'yoichi', txt:"ถ่ายคลิป ขำๆ ลงโซเชียล"},
+      {t:'yokai_private', g:'sayuri', txt:"นอนพักในมุมสงบ"},
+      {t:'human_hot', g:'manasa', txt:"ออกกำลังกายหรือแข่งขันกับเพื่อน"}
+    ]},
+  { q:"9) ถ้าคนในกลุ่มงอนมึง มึงจะ…", o:[
+      {t:'yokai_calm', g:'akito', txt:"นั่งเงียบๆ ไปหาทางช่วยให้ดีขึ้น"},
+      {t:'human_cautious', g:'akito', txt:"ขอโทษก่อนเพื่อให้สถานการณ์สงบ"},
+      {t:'human_hot', g:'manasa', txt:"ปะทะแล้วคุยแบบตรงไปตรงมา"},
+      {t:'yokai_mischief', g:'yoichi', txt:"แกล้งทำท่าหายไปก่อน แล้วกลับมาง้อแบบตลก"}
+    ]},
+  { q:"10) ถ้ามีข่าวลือแปลกๆ เกี่ยวกับโรงเรียน มึงคือคนแบบไหน?", o:[
+      {t:'human_curious', g:'manasa', txt:"ตามเก็บข้อมูลจนรู้จริง"},
+      {t:'yokai_scared', g:'akito', txt:"พยายามไม่สนใจแล้วอยู่ห่าง"},
+      {t:'yokai_playful', g:'yoichi', txt:"เล่นข่าวเป็นมุก ทำให้คนไม่ตื่นตระหนก"},
+      {t:'yokai_private', g:'sayuri', txt:"เก็บเรื่องนั้นไว้ในใจ ไม่พูดให้คนอื่นตื่นตระหนก"}
+    ]},
+  { q:"11) เพื่อนชวนทำโปรเจกต์ที่ซับซ้อน มึงตอบว่า?", o:[
+      {t:'human_cautious', g:'manasa', txt:"ช่วย แต่ต้องวางแผนชัดเจนก่อน"},
+      {t:'human_curious', g:'manasa', txt:"ตกลง! งานยากคือโจทย์น่าสนุก"},
+      {t:'yokai_mischief', g:'yoichi', txt:"รับแล้วใส่ลูกเล่นให้เพื่อนหัวเราะ"},
+      {t:'yokai_calm', g:'sayuri', txt:"ดูแลรายละเอียดเล็กๆ ให้โปรเจกต์เรียบร้อย"}
+    ]},
+  { q:"12) ถ้ามึงต้องเผชิญหน้าอะไรที่แปลกๆ เดียวดาย มึงจะ…", o:[
+      {t:'yokai_scared', g:'akito', txt:"พยายามหนีหาที่ปลอดภัย"},
+      {t:'human_cautious', g:'akito', txt:"พยายามคิดหาทางออกอย่างปลอดภัย"},
+      {t:'yokai_mischief', g:'yoichi', txt:"ทำมุกเพื่อเบี่ยงเบนสถานการณ์"},
+      {t:'yokai_calm', g:'sayuri', txt:"นิ่งๆ แล้ววิเคราะห์สถานการณ์"}
+    ]},
+  { q:"13) เวลาเห็นคนทำอะไรผิดกฎ มึงคือคนแบบไหน?", o:[
+      {t:'human_hot', g:'manasa', txt:"ห้าวไล่จับ พูดตรงๆ"},
+      {t:'human_cautious', g:'akito', txt:"เตือนแบบสุภาพก่อน"},
+      {t:'yokai_mischief', g:'yoichi', txt:"แกล้งให้เขารู้ตัวแบบตลก"},
+      {t:'yokai_private', g:'sayuri', txt:"ไม่พูดอะไร แต่คอยเฝ้าดูผลต่อไป"}
+    ]},
+  { q:"14) ถ้ามีโอกาสได้อยู่ในมุมสงบตอนกลางคืน มึงจะทำอะไร?", o:[
+      {t:'yokai_calm', g:'akito', txt:"มองจันทร์ เงียบๆ คิดอะไรไปเรื่อย"},
+      {t:'human_curious', g:'manasa', txt:"ออกสำรวจรอบๆ อย่างช้าๆ"},
+      {t:'yokai_playful', g:'yoichi', txt:"ชวนเพื่อนมาแกล้งแล้วหัวเราะ"},
+      {t:'yokai_private', g:'sayuri', txt:"นอน/พักผ่อน เก็บแรงไว้วันต่อไป"}
+    ]},
+  { q:"15) ถ้าต้องเลือกระหว่างการ 'แสดง' กับ 'เก็บตัว' คุณเลือกอะไร?", o:[
+      {t:'yokai_playful', g:'yoichi', txt:"แสดงเลย! สนุกที่ได้เป็นจุดสนใจ"},
+      {t:'yokai_private', g:'sayuri', txt:"เก็บตัวไว้เป็นส่วนตัวดีกว่า"},
+      {t:'human_hot', g:'manasa', txt:"ถ้าจำเป็นก็จะแสดงเต็มที่เพื่อเป้าหมาย"},
+      {t:'human_cautious', g:'akito', txt:"เลือกในวงเล็กๆ ที่ไว้ใจได้"}
+    ]}
+];
+
+/* --- result definitions --- */
+const typeDefs = {
+  human_cautious: {
+    title: "มนุษย์สายระมัดระวัง",
+    emoji: "🛡️",
+    desc: "อบอุ่น สุภาพ ระมัดระวัง ชอบหลีกเลี่ยงความเสี่ยง แต่พร้อมช่วยเพื่อนเสมอ"
+  },
+  human_curious: {
+    title: "มนุษย์ชอบสำรวจ",
+    emoji: "🔎",
+    desc: "อยากรู้ ชอบสำรวจเรื่องลี้ลับและข่าวลือ เป็นคนที่เติมพลังด้วยความสงสัย"
+  },
+  human_hot: {
+    title: "มนุษย์หัวร้อนแต่จริงใจ",
+    emoji: "🔥",
+    desc: "ตรงไปตรงมา โผงผางบ้าง แต่จริงใจและพร้อมปกป้องคนที่รัก"
+  },
+  yokai_scared: {
+    title: "โยไคขี้กลัว",
+    emoji: "😿",
+    desc: "ตกใจง่าย แต่จริงใจและอบอุ่น ถึงกลัวก็จะช่วยเมื่อจำเป็น"
+  },
+  yokai_mischief: {
+    title: "โยไคเจ้าเล่ห์",
+    emoji: "😼",
+    desc: "ขี้เล่น ขี้แกล้ง แต่ไม่คิดร้าย ชอบทำให้บรรยากาศสนุกขึ้น"
+  },
+  yokai_calm: {
+    title: "โยไคอ่อนโยนเงียบ ๆ",
+    emoji: "🌙",
+    desc: "นิ่ง สังเกตการณ์ดี ใจลึก มีเสน่ห์แบบสงบและชัดเจน"
+  },
+  yokai_playful: {
+    title: "โยไคติ๊งต๊อง/เล่นสนุก",
+    emoji: "🎭",
+    desc: "พลังงานดี ชอบทำให้คนหัวเราะและสร้างความทรงจำสนุกๆ"
+  },
+  yokai_private: {
+    title: "มน/โยไคโลกส่วนตัวสูง",
+    emoji: "🌫️",
+    desc: "ชอบพื้นที่ส่วนตัว เก็บตัว แต่มีเสน่ห์แบบลึกลับ"
+  }
+};
+
+const gangDefs = {
+  akito: {
+    name: "แก๊งอาคิโตะ — สารวัตรนักเรียน (ยูเรย์)",
+    emoji: "🌕",
+    desc: "นิ่ง สุภาพ และอ่อนโยน ชอบมุมสงบ เหมาะกับคนที่เก็บความรู้สึกไว้ลึก"
+  },
+  yoichi: {
+    name: "แก๊งโยอิจิ — รองประธาน (ทานูกิ)",
+    emoji: "🦝",
+    desc: "สุภาพแต่มีมุก ขี้แกล้งแบบน่ารัก เคร่งครัดกับงานแต่แอบใจดี"
+  },
+  manasa: {
+    name: "แก๊งมานาซาโมะ — ประธานนักเรียน (ฟูจิน)",
+    emoji: "🌬️",
+    desc: "ใจดี ฟอร์มสูง ชอบก่อกวนเวลาสนิท แต่จริงจังเวลาทำงาน"
+  },
+  sayuri: {
+    name: "แก๊งซายูริ — เลขา (ยูกิอนนะ)",
+    emoji: "❄️",
+    desc: "สุภาพ เย็นสบาย เก็บตัวแต่มีประสิทธิภาพสูงในการทำงาน"
+  }
+};
+
+/* --- scoring state --- */
+let typeScore = {};
+let gangScore = {};
+let qIndex = 0;
+let historyStack = [];
+
+/* --- DOM refs --- */
+const qnumEl = document.getElementById('qnum');
+const qtitleEl = document.getElementById('qtitle');
+const optsEl = document.getElementById('opts');
+const barEl = document.getElementById('bar');
+const resultEl = document.getElementById('result');
+const btnSkip = document.getElementById('btnSkip');
+
+function renderQuestion(i){
+  const Q = questions[i];
+  qnumEl.textContent = `คำถาม ${i+1} / ${questions.length}`;
+  qtitleEl.textContent = Q.q;
+  optsEl.innerHTML = '';
+  Q.o.forEach((opt, idx)=>{
+    const d = document.createElement('div');
+    d.className = 'opt';
+    d.tabIndex = 0;
+    d.innerHTML = `<strong>${String.fromCharCode(65+idx)}.</strong> ${opt.txt}`;
+    d.onclick = ()=> chooseWithHistory(opt);
+    d.onkeydown = (e)=>{ if(e.key==='Enter') chooseWithHistory(opt) };
+    optsEl.appendChild(d);
+  });
+  barEl.style.width = `${Math.round((i)/questions.length*100)}%`;
+}
+
+function chooseWithHistory(opt){
+  playClick();
+  historyStack.push(opt);
+  if(opt.t){ typeScore[opt.t] = (typeScore[opt.t]||0) + 1; }
+  if(opt.g){ gangScore[opt.g] = (gangScore[opt.g]||0) + 1; }
+  qIndex++;
+  if(qIndex >= questions.length) showResult();
+  else renderQuestion(qIndex);
+}
+
+btnSkip.addEventListener('click', ()=>{
+  playClick();
+  historyStack.push({t:null,g:null});
+  qIndex++;
+  if(qIndex >= questions.length) showResult();
+  else renderQuestion(qIndex);
+});
+
+/* allow undo (previous) via double-click on progress bar area if needed */
+barEl.parentElement.addEventListener('dblclick', ()=>{
+  if(historyStack.length===0) return;
+  const last = historyStack.pop();
+  if(last && last.t) typeScore[last.t] = Math.max(0,(typeScore[last.t]||0)-1);
+  if(last && last.g) gangScore[last.g] = Math.max(0,(gangScore[last.g]||0)-1);
+  qIndex = Math.max(0,qIndex-1);
+  renderQuestion(qIndex);
+});
+
+/* pick top with tiebreak */
+function pickTop(obj){
+  const entries = Object.entries(obj).filter(e=>e[1]>0);
+  if(entries.length===0) return null;
+  let max = 0;
+  entries.forEach(([k,v])=>{ if(v>max) max=v; });
+  const top = entries.filter(([k,v])=>v===max).map(([k,v])=>k);
+  return top[Math.floor(Math.random()*top.length)];
+}
+
+function showResult(){
+  playClick();
+  barEl.style.width = '100%';
+  const topType = pickTop(typeScore) || 'human_cautious';
+  const topGangKey = pickTop(gangScore) || 'akito';
+  const typeInfo = typeDefs[topType] || {title:'ไม่ทราบ', emoji:'❔', desc:''};
+  const gangInfo = gangDefs[topGangKey] || {name:'ไม่ทราบ', emoji:'❔', desc:''};
+
+  // set url params for sharing
+  const loc = new URL(window.location.href);
+  loc.searchParams.set('hh_type', topType);
+  loc.searchParams.set('hh_gang', topGangKey);
+  history.replaceState({}, '', loc);
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <div class="res-row">
+      <div class="res-card">
+        <div class="emoji">${typeInfo.emoji}</div>
+        <div class="rtitle">${typeInfo.title}</div>
+        <div class="rdesc">${typeInfo.desc}</div>
+      </div>
+      <div class="res-card">
+        <div class="emoji">${gangInfo.emoji}</div>
+        <div class="rtitle">${gangInfo.name}</div>
+        <div class="rdesc">${gangInfo.desc}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button class="btn" id="shareBtn">คัดลอกลิงก์ผล / แชร์</button>
+      <button class="btn ghost" id="replayBtn">เล่นใหม่</button>
+    </div>
+  `;
+  document.getElementById('shareBtn').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(window.location.href); const b=document.getElementById('shareBtn'); b.textContent='คัดลอกแล้ว! แชร์ได้เลย'; setTimeout(()=>b.textContent='คัดลอกลิงก์ผล / แชร์',1400);}catch(e){alert('คัดลอกลิงก์ไม่สำเร็จ — โปรดคัดลอก URL เอง')};
+  });
+  document.getElementById('replayBtn').addEventListener('click', ()=>{
+    // reset
+    typeScore={}; gangScore={}; qIndex=0; historyStack=[];
+    resultEl.style.display='none'; resultEl.innerHTML='';
+    const noLoc = new URL(window.location.href); noLoc.search=''; history.replaceState({},'',noLoc);
+    renderQuestion(0);
+    barEl.style.width = '0%';
+  });
+}
+
+/* show result directly if params present */
+function autoFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('hh_type');
+  const g = params.get('hh_gang');
+  if(t && g){
+    const typeInfo = typeDefs[t] || {title:'ไม่ทราบ', emoji:'❔', desc:''};
+    const gangInfo = gangDefs[g] || {name:'ไม่ทราบ', emoji:'❔', desc:''};
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="res-row">
+        <div class="res-card">
+          <div class="emoji">${typeInfo.emoji}</div>
+          <div class="rtitle">${typeInfo.title}</div>
+          <div class="rdesc">${typeInfo.desc}</div>
+        </div>
+        <div class="res-card">
+          <div class="emoji">${gangInfo.emoji}</div>
+          <div class="rtitle">${gangInfo.name}</div>
+          <div class="rdesc">${gangInfo.desc}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn" id="shareBtn">คัดลอกลิงก์ผล / แชร์</button>
+        <button class="btn ghost" id="replayBtn">เล่นใหม่</button>
+      </div>
+    `;
+    document.getElementById('shareBtn').addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(window.location.href); const b=document.getElementById('shareBtn'); b.textContent='คัดลอกแล้ว!'; setTimeout(()=>b.textContent='คัดลอกลิงก์ผล / แชร์',1400);}catch(e){alert('คัดลอกไม่สำเร็จ');} });
+    document.getElementById('replayBtn').addEventListener('click', ()=>{ typeScore={}; gangScore={}; qIndex=0; historyStack=[]; resultEl.style.display='none'; resultEl.innerHTML=''; renderQuestion(0); const noLoc = new URL(window.location.href); noLoc.search=''; history.replaceState({}, '', noLoc); });
+    return true;
+  }
+  return false;
+}
+
+/* init */
+if(!autoFromURL()){
+  renderQuestion(0);
+}
+</script>
+</body>
+</html>
+
+    
